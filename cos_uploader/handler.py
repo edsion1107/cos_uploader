@@ -1,8 +1,11 @@
-from pathlib import Path
-from loguru import logger
-from qcloud_cos import CosConfig, CosS3Client, CosClientError, CosServiceError
+import os
 from importlib.resources import as_file, files
+from pathlib import Path
+
+from loguru import logger
+from qcloud_cos import CosClientError, CosConfig, CosS3Client, CosServiceError
 from watchdog.events import FileSystemEventHandler
+
 import cos_uploader
 
 
@@ -35,12 +38,16 @@ class MyEventHandler(FileSystemEventHandler):
         self.empty_file.write_bytes(b"")
         self.empty_file.chmod(0o444)
 
-    def parse_local_and_remote_file(self, local: str) -> str:
+    def parse_local_and_remote_file(self, local: os.PathLike):
         local_file_path = Path(local).resolve(strict=True)
         remote = local_file_path.relative_to(self.base_path).as_posix()
         if local_file_path.is_dir():
-            remote_file_path = ""
             remote += "/"
+            with as_file(files(cos_uploader).joinpath("empty")) as f:
+                return remote, f.resolve()
+        else:
+            return remote, local_file_path
+
 
     def on_any_event(self, event):
         logger.info(event)
@@ -51,23 +58,15 @@ class MyEventHandler(FileSystemEventHandler):
 
     def on_created(self, event):
         local_file = Path(event.src_path)
-        remote_file_path = self.file_path.relative_to(self.base_path)
+        remote,fp = self.parse_local_and_remote_file(local_file)
         try:
-            if local_file.is_file():
-                self.client.upload_file(
-                    Bucket=self.bucket,
-                    Key=remote_file_path.as_posix(),
-                    LocalFilePath=local_file,
-                    EnableMD5=True,
-                )
-            else:
-                with as_file(files(cos_uploader).joinpath("empty")) as f:
-                    self.client.upload_file(
-                        Bucket=self.bucket,
-                        Key=remote_file_path.as_posix() + "/",
-                        LocalFilePath=f,
-                        EnableMD5=True,
-                    )
+            res = self.client.upload_file(
+                Bucket=self.bucket,
+                Key=remote,
+                LocalFilePath=fp,
+                EnableMD5=True
+            )
+            logger.info(res)
         except (CosClientError, CosServiceError):
             logger.exception("upload failed")
 
