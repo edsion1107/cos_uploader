@@ -21,10 +21,11 @@ pytest-cov = "^3.0.0"
 [tool.pytest.ini_options]
 minversion = "7.0"
 log_cli = true
-log_cli_level = "INFO"
+log_cli_level = "DEBUG"
 log_cli_format = "%(asctime)s %(filename)s(%(lineno)d) %(levelname)s %(message)s"
 
-addopts = "-p no:cacheprovider --showlocals --cov=cos_uploader"
+# addopts = "-p no:cacheprovider --showlocals --cov=cos_uploader"   # 带cov不支持调试
+addopts = "-p no:cacheprovider --showlocals"
 
 [tool.poetry.scripts]
 cos-uploader = "cos_uploader.cli:app"

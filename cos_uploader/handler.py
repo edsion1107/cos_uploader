@@ -13,9 +13,10 @@ class MyEventHandler(FileSystemEventHandler):
     client: CosS3Client
     bucket: str
     base_path: Path
-    empty_file = Path(__file__).with_name("empty")
 
-    def __init__(self, base_path: Path, secret_id: str, secret_key: str, region: str, bucket: str):
+    def __init__(
+        self, base_path: Path, secret_id: str, secret_key: str, region: str, bucket: str
+    ):
         config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key)
         self.client = CosS3Client(config)
         assert Path(base_path).is_dir()
@@ -27,51 +28,58 @@ class MyEventHandler(FileSystemEventHandler):
         # self.create_empty_file()
 
     @DeprecationWarning
-    def create_empty_file(self):
+    def _create_empty_file(self):
         """创建空文件用于创建文件夹——对象存储不支持文件夹"""
-        if self.empty_file.is_file():
-            if not self.empty_file.stat().st_size == 0:
+        if self._empty_file.is_file():
+            if not self._empty_file.stat().st_size == 0:
                 logger.warning("empty file size is not '0'")
-                self.empty_file.unlink()
+                self._empty_file.unlink()
             else:
                 return
-        self.empty_file.write_bytes(b"")
-        self.empty_file.chmod(0o444)
+        self._empty_file.write_bytes(b"")
+        self._empty_file.chmod(0o444)
 
-    def parse_local_and_remote_file(self, local: os.PathLike):
-        local_file_path = Path(local).resolve(strict=True)
-        remote = local_file_path.relative_to(self.base_path).as_posix()
-        if local_file_path.is_dir():
+    def _remote_filename(self, local: os.PathLike, is_dir: bool):
+        remote = local.relative_to(self.base_path).as_posix()
+        if is_dir:
             remote += "/"
-            with as_file(files(cos_uploader).joinpath("empty")) as f:
-                return remote, f.resolve()
-        else:
-            return remote, local_file_path
+        return remote
 
+    def _empty_file(self):
+        with as_file(files(cos_uploader).joinpath("empty")) as f:
+            return f.resolve()
 
     def on_any_event(self, event):
-        logger.info(event)
+        logger.info(f"{event=}")
 
     # 文件移动
     def on_moved(self, event):
         print(event)
 
     def on_created(self, event):
-        local_file = Path(event.src_path)
-        remote,fp = self.parse_local_and_remote_file(local_file)
         try:
-            res = self.client.upload_file(
-                Bucket=self.bucket,
-                Key=remote,
-                LocalFilePath=fp,
-                EnableMD5=True
-            )
-            logger.info(res)
+            if event.is_directory:
+                res = self.client.upload_file(
+                    Bucket=self.bucket,
+                    Key=self._remote_filename(event.src_path, True),
+                    LocalFilePath=self._empty_file(),
+                )
+            else:
+                res = self.client.upload_file(
+                    Bucket=self.bucket,
+                    Key=self._remote_filename(event.src_path, False),
+                    LocalFilePath=event.src_path,
+                    EnableMD5=True,
+                )
+            logger.info(f"{res=}")
         except (CosClientError, CosServiceError):
             logger.exception("upload failed")
 
     def on_deleted(self, event):
-        print(event)
+        local_file = Path(event.src_path)
+        remote, _ = self._remote_filename(local_file)
+        res = self.client.delete_object(Bucket=self.bucket, Key=remote)
+        logger.info(res)
 
     def on_modified(self, event):
         print(event)
