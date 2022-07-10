@@ -15,6 +15,19 @@ tenacity = "^8.0.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.0"
+pytest-timeout = "^2.1.0"
+pytest-cov = "^3.0.0"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s %(filename)s(%(lineno)d) %(levelname)s %(message)s"
+
+addopts = "-p no:cacheprovider --showlocals --cov=cos_uploader"
+
+[tool.poetry.scripts]
+cos-uploader = "cos_uploader.cli:app"
 
 [tool.poetry-dynamic-versioning]
 enable = true
@@ -24,5 +37,5 @@ style = "semver"
 bump = true
 
 [build-system]
-requires = ["poetry>=1.2.0b1", "poetry-dynamic-versioning-plugin"]
+requires = ["poetry>=1.1.0", "poetry-dynamic-versioning"]
 build-backend = "poetry.masonry.api"
