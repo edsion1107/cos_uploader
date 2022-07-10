@@ -1,9 +1,10 @@
 import os
 import uuid
-import pytest
-from watchdog.events import FileCreatedEvent
-from cos_uploader.handler import MyEventHandler
 from pathlib import Path
+
+import pytest
+from cos_uploader.handler import MyEventHandler
+from watchdog.events import FileCreatedEvent
 
 
 @pytest.fixture()
@@ -19,7 +20,7 @@ def handler(tmp_path):
 
 
 @pytest.fixture(params=[True, False])
-def local_file_and_folder(tmp_path: Path,request):
+def local_file_and_folder(tmp_path: Path, request):
     local = tmp_path.joinpath(str(uuid.uuid4()))
     if request.param:
         local.touch()
@@ -29,9 +30,8 @@ def local_file_and_folder(tmp_path: Path,request):
         local.mkdir()
         yield local
         local.rmdir()
-    
 
 
-def test_file_create_event(local_file_and_folder, handler: MyEventHandler):
+def test_on_create_event(local_file_and_folder, handler: MyEventHandler):
     event = FileCreatedEvent(local_file_and_folder)
     handler.on_created(event)
