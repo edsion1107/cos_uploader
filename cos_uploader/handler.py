@@ -40,7 +40,7 @@ class MyEventHandler(FileSystemEventHandler):
         self._empty_file.chmod(0o444)
 
     def _remote_filename(self, local: os.PathLike, is_dir: bool):
-        remote = local.relative_to(self.base_path).as_posix()
+        remote = Path(local).relative_to(self.base_path).as_posix()
         if is_dir:
             remote += "/"
         return remote
@@ -77,9 +77,12 @@ class MyEventHandler(FileSystemEventHandler):
 
     def on_deleted(self, event):
         local_file = Path(event.src_path)
-        remote, _ = self._remote_filename(local_file)
-        res = self.client.delete_object(Bucket=self.bucket, Key=remote)
-        logger.info(res)
+        remote = self._remote_filename(local_file, event.is_directory)
+        try:
+            res = self.client.delete_object(Bucket=self.bucket, Key=remote)
+            logger.info(f"{res=}")
+        except (CosClientError, CosServiceError):
+            logger.exception("upload failed")
 
     def on_modified(self, event):
         print(event)

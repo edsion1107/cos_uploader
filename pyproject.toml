@@ -24,8 +24,8 @@ log_cli = true
 log_cli_level = "DEBUG"
 log_cli_format = "%(asctime)s %(filename)s(%(lineno)d) %(levelname)s %(message)s"
 
-# addopts = "-p no:cacheprovider --showlocals --cov=cos_uploader"   # 带cov不支持调试
-addopts = "-p no:cacheprovider --showlocals"
+addopts = "-p no:cacheprovider --showlocals --cov=cos_uploader"   # 带cov不支持调试
+# addopts = "-p no:cacheprovider --showlocals"
 
 [tool.poetry.scripts]
 cos-uploader = "cos_uploader.cli:app"

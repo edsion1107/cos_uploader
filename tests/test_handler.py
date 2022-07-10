@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from cos_uploader.handler import MyEventHandler
-from watchdog.events import FileCreatedEvent, FileDeletedEvent,DirCreatedEvent
+from watchdog.events import FileCreatedEvent, FileDeletedEvent,DirCreatedEvent,DirDeletedEvent
 
 
 @pytest.fixture()
@@ -43,6 +43,10 @@ def test_on_create_event(local:Path, handler: MyEventHandler):
     handler.on_created(event)
 
 
-def test_on_delete_event(local_file_and_folder, handler: MyEventHandler):
-    event = FileDeletedEvent(local_file_and_folder)
+def test_on_delete_event(local, handler: MyEventHandler):
+    if local.is_file():
+        event = FileDeletedEvent(local)
+    else:
+        event = DirDeletedEvent(local)
+    logging.info(event)
     handler.on_deleted(event)
